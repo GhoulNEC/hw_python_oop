@@ -137,7 +137,7 @@ def read_package(workout_type: str, data: list) -> Training:
         'WLK': SportsWalking
     }
     if workout_type not in training_type:
-        raise '<такого кода тренировки нет в списке>'
+        raise NameError(f'кода тренировки {workout_type} нет в списке')
     return training_type[workout_type](*data)
 
 
