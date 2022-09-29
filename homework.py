@@ -1,5 +1,5 @@
-from dataclasses import dataclass, asdict
-from typing import Dict, Type
+from dataclasses import dataclass, asdict, fields
+from typing import Dict, Any
 
 
 @dataclass
@@ -22,21 +22,17 @@ class InfoMessage:
         return self.MESSAGE.format(**asdict(self))
 
 
+@dataclass
 class Training:
     """Базовый класс тренировки."""
 
-    LEN_STEP: float = 0.65
-    M_IN_KM: float = 1000
-    M_IN_H: float = 60
+    LEN_STEP = 0.65
+    M_IN_KM = 1000
+    M_IN_H = 60
 
-    def __init__(self,
-                 action: int,
-                 duration: float,
-                 weight: float,
-                 ) -> None:
-        self.action = action
-        self.duration = duration
-        self.weight = weight
+    action: int
+    duration: float
+    weight: float
 
     def get_distance(self) -> float:
         """Получить дистанцию в км."""
@@ -59,34 +55,32 @@ class Training:
                            self.get_spent_calories())
 
 
+@dataclass
 class Running(Training):
     """Тренировка: бег."""
 
-    COEFF_MEAN_SPEED_1: float = 18
-    COEFF_MEAN_SPEED_2: float = 20
+    COEFF_MEAN_SPEED_1 = 18
+    COEFF_MEAN_SPEED_2 = 20
 
     def get_spent_calories(self) -> float:
         return ((self.COEFF_MEAN_SPEED_1 * self.get_mean_speed()
                  - self.COEFF_MEAN_SPEED_2)
                 * self.weight / self.M_IN_KM
-                * (self.duration * self.M_IN_H))
+                * self.duration * self.M_IN_H)
 
 
+@dataclass
 class SportsWalking(Training):
     """Тренировка: спортивная ходьба."""
 
-    COEFF_WEIGHT_1: float = 0.035
-    COEFF_WEIGHT_2: float = 0.029
-    EXPONENT: int = 2
+    COEFF_WEIGHT_1 = 0.035
+    COEFF_WEIGHT_2 = 0.029
+    EXPONENT = 2
 
-    def __init__(self,
-                 action: int,
-                 duration: float,
-                 weight: float,
-                 height: float,
-                 ) -> None:
-        super().__init__(action, duration, weight)
-        self.height = height
+    action: int
+    duration: float
+    weight: float
+    height: float
 
     def get_spent_calories(self) -> float:
         return (
@@ -97,23 +91,19 @@ class SportsWalking(Training):
             * self.duration * self.M_IN_H)
 
 
+@dataclass
 class Swimming(Training):
     """Тренировка: плавание."""
 
     LEN_STEP = 1.38
-    COEFF_MEAN_SPEED: float = 1.1
-    COEFF_WEIGHT: float = 2
+    COEFF_MEAN_SPEED = 1.1
+    COEFF_WEIGHT = 2
 
-    def __init__(self,
-                 action: int,
-                 duration: float,
-                 weight: float,
-                 length_pool: float,
-                 count_pool: int,
-                 ) -> None:
-        super().__init__(action, duration, weight)
-        self.length_pool = length_pool
-        self.count_pool = count_pool
+    action: int
+    duration: float
+    weight: float
+    length_pool: float
+    count_pool: int
 
     def get_mean_speed(self) -> float:
         return (self.length_pool * self.count_pool / self.M_IN_KM
@@ -126,14 +116,18 @@ class Swimming(Training):
 
 def read_package(workout_type: str, data: list) -> Training:
     """Прочитать данные полученные от датчиков."""
-    training_type: Dict[str, Type[Training]] = {
-        'SWM': Swimming,
-        'RUN': Running,
-        'WLK': SportsWalking
+    training_type: Dict[str, Any] = {
+        'SWM': (Swimming, len(fields(Swimming))),
+        'RUN': (Running, len(fields(Running))),
+        'WLK': (SportsWalking, len(fields(SportsWalking)))
     }
     if workout_type not in training_type:
-        raise NameError(f'кода тренировки {workout_type} нет в списке')
-    return training_type[workout_type](*data)
+        raise KeyError(f'кода тренировки {workout_type} нет в списке')
+    if training_type[workout_type][1] != len(data):
+        raise ValueError(f'недопустимое количество значений. '
+                         f'Пришло значений: {len(data)}, '
+                         f'ожидается: {training_type[workout_type][1]}')
+    return training_type[workout_type][0](*data)
 
 
 def main(training: Training) -> None:
@@ -145,7 +139,7 @@ if __name__ == '__main__':
     packages = [
         ('SWM', [720, 1, 80, 25, 40]),
         ('RUN', [15000, 1, 75]),
-        ('WLK', [9000, 1, 75, 180]),
+        ('WLK', [9000, 1, 75, 180])
     ]
 
     for workout_type, data in packages:
